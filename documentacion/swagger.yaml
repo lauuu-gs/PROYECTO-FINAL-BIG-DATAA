@@ -1,0 +1,385 @@
+openapi: "3.0.0"
+
+info:
+  title: "Student Productivity Prediction API"
+  description: |
+    API REST desarrollada como parte del Proyecto Final de la asignatura
+    **Aplicaciones Big Data I** (4º Título Superior en Data Science - ESIC University).
+    
+    Implementa la fase de **Despliegue** del framework CRISP-DM sobre el dataset
+    *Student Productivity & Distraction Dataset* (20.000 registros).
+    
+    Permite consultar estadísticas del dataset y realizar predicciones del nivel
+    de productividad (ALTA / MEDIA / BAJA) de un estudiante usando un modelo
+    Decision Tree entrenado con scikit-learn.
+  version: "1.0.0"
+  contact:
+    name: "Estudiante ESIC University"
+
+servers:
+  - url: "http://127.0.0.1:5000"
+    description: "Servidor local de desarrollo"
+
+tags:
+  - name: "General"
+    description: "Información general de la API"
+  - name: "Estadísticas"
+    description: "Estadísticas descriptivas del dataset"
+  - name: "Estudiantes"
+    description: "Operaciones CRUD sobre registros de estudiantes"
+  - name: "Predicciones"
+    description: "Predicciones del modelo de Machine Learning"
+
+paths:
+
+  /:
+    get:
+      tags: ["General"]
+      summary: "Información de la API"
+      description: "Devuelve la descripción de la API y el listado de todos los endpoints disponibles."
+      responses:
+        "200":
+          description: "Información de la API y endpoints disponibles"
+          content:
+            application/json:
+              example:
+                api: "Student Productivity Prediction API"
+                version: "1.0"
+                descripcion: "API para análisis de productividad estudiantil"
+
+  /estadisticas:
+    get:
+      tags: ["Estadísticas"]
+      summary: "Estadísticas generales del dataset"
+      description: |
+        Devuelve estadísticas descriptivas del dataset completo:
+        - Total de estudiantes
+        - Medias de las variables principales
+        - Distribución por nivel de productividad
+        - Distribución por género
+      responses:
+        "200":
+          description: "Estadísticas calculadas correctamente"
+          content:
+            application/json:
+              example:
+                estadisticas_generales:
+                  total_estudiantes: 20000
+                  media_horas_estudio: 5.25
+                  media_nota_final: 70.27
+                  media_productividad: 50.18
+                distribucion_productividad:
+                  ALTA: 3427
+                  MEDIA: 13186
+                  BAJA: 3387
+                distribucion_genero:
+                  Female: 9640
+                  Male: 9582
+                  Other: 778
+        "500":
+          description: "Error interno del servidor"
+
+  /estadisticas/genero:
+    get:
+      tags: ["Estadísticas"]
+      summary: "Estadísticas agrupadas por género"
+      description: "Devuelve medias de horas de estudio, distracción, nota y productividad para cada género."
+      responses:
+        "200":
+          description: "Estadísticas por género"
+          content:
+            application/json:
+              example:
+                estadisticas_por_genero:
+                  - gender: "Female"
+                    total: 9640
+                    media_estudio: 5.23
+                    media_distraccion_total: 12.95
+                    media_nota: 70.28
+                    media_productividad: 50.22
+
+  /estadisticas/productividad:
+    get:
+      tags: ["Estadísticas"]
+      summary: "Estadísticas agrupadas por nivel de productividad"
+      description: "Permite comparar el comportamiento de estudiantes ALTA, MEDIA y BAJA productividad."
+      responses:
+        "200":
+          description: "Estadísticas por nivel de productividad"
+
+  /estudiantes:
+    get:
+      tags: ["Estudiantes"]
+      summary: "Listado paginado de estudiantes"
+      description: |
+        Devuelve una lista de estudiantes con paginación.
+        Permite filtrar por nivel de productividad.
+      parameters:
+        - name: pagina
+          in: query
+          description: "Número de página (por defecto 1)"
+          schema:
+            type: integer
+            default: 1
+        - name: limite
+          in: query
+          description: "Registros por página (por defecto 10, máximo 100)"
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+        - name: nivel
+          in: query
+          description: "Filtrar por nivel de productividad"
+          schema:
+            type: string
+            enum: ["ALTA", "MEDIA", "BAJA"]
+      responses:
+        "200":
+          description: "Lista de estudiantes con información de paginación"
+          content:
+            application/json:
+              example:
+                paginacion:
+                  pagina_actual: 1
+                  limite: 10
+                  total_registros: 20000
+                  total_paginas: 2000
+                estudiantes:
+                  - id: 1
+                    age: 23
+                    gender: "Female"
+                    study_hours: 4.35
+                    final_grade: 81.87
+                    nivel_productividad: "BAJA"
+
+  /estudiante/{id}:
+    get:
+      tags: ["Estudiantes"]
+      summary: "Obtener datos de un estudiante por ID"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "ID del estudiante"
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Datos completos del estudiante"
+        "404":
+          description: "Estudiante no encontrado"
+          content:
+            application/json:
+              example:
+                error: "No se encontró ningún estudiante con ID 99999"
+
+    put:
+      tags: ["Estudiantes"]
+      summary: "Actualizar datos de un estudiante"
+      description: "Actualización parcial: solo se modifican los campos enviados en el body."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                study_hours:
+                  type: number
+                  example: 6.0
+                sleep_hours:
+                  type: number
+                  example: 8.0
+                stress_level:
+                  type: integer
+                  example: 3
+      responses:
+        "200":
+          description: "Estudiante actualizado correctamente"
+        "400":
+          description: "Ningún campo válido para actualizar"
+        "404":
+          description: "Estudiante no encontrado"
+
+    delete:
+      tags: ["Estudiantes"]
+      summary: "Eliminar un estudiante"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Estudiante eliminado correctamente"
+          content:
+            application/json:
+              example:
+                mensaje: "Estudiante con ID 5 eliminado correctamente"
+        "404":
+          description: "Estudiante no encontrado"
+
+  /predecir:
+    post:
+      tags: ["Predicciones"]
+      summary: "Predecir nivel de productividad"
+      description: |
+        Recibe los hábitos de un estudiante y devuelve la predicción del
+        nivel de productividad (ALTA / MEDIA / BAJA) usando el modelo
+        Decision Tree entrenado durante la fase de Modelado CRISP-DM.
+        
+        También devuelve la probabilidad de confianza de la predicción
+        y un desglose de probabilidades por cada clase.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - age
+                - gender
+                - study_hours_per_day
+                - sleep_hours
+                - phone_usage_hours
+                - social_media_hours
+                - youtube_hours
+                - gaming_hours
+                - breaks_per_day
+                - coffee_intake_mg
+                - exercise_minutes
+                - assignments_completed
+                - attendance_percentage
+                - stress_level
+                - focus_score
+                - final_grade
+              properties:
+                age:
+                  type: integer
+                  description: "Edad en años"
+                  example: 22
+                gender:
+                  type: string
+                  enum: ["Female", "Male", "Other"]
+                  example: "Female"
+                study_hours_per_day:
+                  type: number
+                  description: "Horas de estudio al día"
+                  example: 6.0
+                sleep_hours:
+                  type: number
+                  description: "Horas de sueño por noche"
+                  example: 7.5
+                phone_usage_hours:
+                  type: number
+                  example: 2.0
+                social_media_hours:
+                  type: number
+                  example: 1.5
+                youtube_hours:
+                  type: number
+                  example: 1.0
+                gaming_hours:
+                  type: number
+                  example: 0.5
+                breaks_per_day:
+                  type: integer
+                  example: 4
+                coffee_intake_mg:
+                  type: number
+                  example: 200
+                exercise_minutes:
+                  type: number
+                  example: 30
+                assignments_completed:
+                  type: integer
+                  example: 12
+                attendance_percentage:
+                  type: number
+                  example: 88.0
+                stress_level:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  example: 4
+                focus_score:
+                  type: number
+                  example: 72
+                final_grade:
+                  type: number
+                  example: 78.0
+            example:
+              age: 22
+              gender: "Female"
+              study_hours_per_day: 6.0
+              sleep_hours: 7.5
+              phone_usage_hours: 2.0
+              social_media_hours: 1.5
+              youtube_hours: 1.0
+              gaming_hours: 0.5
+              breaks_per_day: 4
+              coffee_intake_mg: 200
+              exercise_minutes: 30
+              assignments_completed: 12
+              attendance_percentage: 88.0
+              stress_level: 4
+              focus_score: 72
+              final_grade: 78.0
+      responses:
+        "200":
+          description: "Predicción realizada correctamente"
+          content:
+            application/json:
+              example:
+                id_prediccion: 1
+                prediccion: "ALTA"
+                probabilidad_confianza: "72.3%"
+                probabilidades_por_clase:
+                  ALTA: "72.3%"
+                  MEDIA: "27.7%"
+                  BAJA: "0.0%"
+                resumen_datos:
+                  horas_estudio: 6.0
+                  horas_sueno: 7.5
+                  total_distraccion: 5.0
+                  ratio_estudio_distraccion: 1.199
+        "400":
+          description: "Datos incompletos o inválidos"
+          content:
+            application/json:
+              example:
+                error: "Faltan campos requeridos"
+                campos_faltantes: ["sleep_hours", "gaming_hours"]
+        "500":
+          description: "Error del servidor (modelo no cargado)"
+
+  /predicciones:
+    get:
+      tags: ["Predicciones"]
+      summary: "Historial de predicciones realizadas"
+      description: "Devuelve las últimas 50 predicciones realizadas por la API con un resumen estadístico."
+      responses:
+        "200":
+          description: "Historial de predicciones"
+          content:
+            application/json:
+              example:
+                total_predicciones_realizadas: 25
+                resumen_predicciones:
+                  ALTA: 8
+                  MEDIA: 12
+                  BAJA: 5
+                ultimas_predicciones:
+                  - id: 25
+                    fecha: "2026-05-04 10:30:00"
+                    study_hours: 6.0
+                    prediccion: "ALTA"
+                    probabilidad: 0.723
